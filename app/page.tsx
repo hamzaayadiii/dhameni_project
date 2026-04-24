@@ -262,52 +262,49 @@ export default function Home() {
   let statusMessage = ""
 
   if (order.status === "En attente paiement") {
-    statusMessage = `Votre commande est enregistrée via Dhameni.
+    statusMessage = `Votre commande est prête.
 
-Montant : ${order.amount} TND
-
-Pour sécuriser la commande et éviter les problèmes de livraison, merci de confirmer ou payer via le lien ci-dessous.`
+Pour éviter les annulations et garantir la livraison, merci de confirmer ou payer.`
   }
 
   if (order.status === "Payé") {
-    statusMessage = `Votre paiement est bien confirmé via Dhameni.
+    statusMessage = `Paiement confirmé.
 
-Montant : ${order.amount} TND
-
-Votre commande est maintenant prête pour la livraison.`
+Votre commande est en cours de préparation pour livraison.`
   }
 
   if (order.status === "Livré") {
-    statusMessage = `Votre commande est marquée comme livrée via Dhameni.
+    statusMessage = `Commande livrée avec succès.
 
-Merci pour votre confiance.
-
-En cas de problème avec l’article, vous pouvez contacter le vendeur rapidement.`
+Merci pour votre confiance.`
   }
 
   if (order.status === "Refusé") {
-    statusMessage = `Votre commande est marquée comme refusée via Dhameni.
+    statusMessage = `Commande refusée.
 
-Cette information permet de garder une trace claire entre le client, le vendeur et la livraison.`
+Cette action est enregistrée dans le système Dhameni.`
   }
 
   if (order.status === "Retourné") {
-    statusMessage = `Votre commande est marquée comme retournée via Dhameni.
+    statusMessage = `Commande retournée.
 
-Le retour est enregistré afin de garder une trace claire et sécurisée.`
+Le retour est enregistré pour garantir la transparence.`
   }
 
   const message = `Bonjour ${order.client_name},
 
 ${statusMessage}
 
-✔️ Commande sécurisée
-✔️ Livraison suivie
-✔️ Traçabilité en cas de refus ou retour
+💰 Montant : ${order.amount} TND
 
-${order.payment_link ? `Lien de paiement : ${order.payment_link}` : ""}
+🔒 Dhameni garantit :
+✔️ Suivi de livraison
+✔️ Sécurité commande
+✔️ Traçabilité en cas de problème
 
-Merci.`
+${order.payment_link ? `👉 Paiement sécurisé : ${order.payment_link}` : ""}
+
+Merci 🙏`
 
   window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
 }
