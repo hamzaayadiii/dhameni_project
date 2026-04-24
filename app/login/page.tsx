@@ -25,11 +25,8 @@ export default function LoginPage() {
 
     setLoading(false)
 
-    if (error) {
-      alert(error.message)
-    } else {
-      router.push("/")
-    }
+    if (error) alert(error.message)
+    else router.push("/")
   }
 
   async function handleSignup() {
@@ -52,11 +49,24 @@ export default function LoginPage() {
 
     setLoading(false)
 
-    if (error) {
-      alert(error.message)
-    } else {
-      alert("Compte créé. Connecte-toi maintenant.")
+    if (error) alert(error.message)
+    else alert("Compte créé. Connecte-toi maintenant.")
+  }
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      alert("Entre ton email pour recevoir le lien de réinitialisation.")
+      return
     }
+
+    const redirectTo = `${window.location.origin}/reset-password`
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo,
+    })
+
+    if (error) alert(error.message)
+    else alert("Email envoyé. Vérifie ta boîte mail.")
   }
 
   return (
@@ -90,7 +100,6 @@ export default function LoginPage() {
           type="email"
           placeholder="Email"
           value={email}
-          autoComplete="email"
           onChange={(e) => setEmail(e.target.value)}
           style={{
             width: "100%",
@@ -106,7 +115,6 @@ export default function LoginPage() {
           type="password"
           placeholder="Mot de passe"
           value={password}
-          autoComplete="current-password"
           onChange={(e) => setPassword(e.target.value)}
           style={{
             width: "100%",
@@ -149,9 +157,25 @@ export default function LoginPage() {
             backgroundColor: "white",
             fontWeight: 700,
             cursor: "pointer",
+            marginBottom: 12,
           }}
         >
           Créer un compte
+        </button>
+
+        <button
+          type="button"
+          onClick={handleForgotPassword}
+          style={{
+            width: "100%",
+            background: "transparent",
+            border: "none",
+            color: "#065f46",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Mot de passe oublié ?
         </button>
       </div>
     </main>

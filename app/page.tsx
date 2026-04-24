@@ -257,14 +257,49 @@ export default function Home() {
   }
 
   function openWhatsApp(order: Order) {
-    const phone = formatPhoneForWhatsApp(order.phone)
+  const phone = formatPhoneForWhatsApp(order.phone)
 
-    const message = `Bonjour ${order.client_name},
+  let statusMessage = ""
 
-Votre commande est enregistrée via Dhameni.
+  if (order.status === "En attente paiement") {
+    statusMessage = `Votre commande est enregistrée via Dhameni.
 
 Montant : ${order.amount} TND
-Statut : ${order.status}
+
+Pour sécuriser la commande et éviter les problèmes de livraison, merci de confirmer ou payer via le lien ci-dessous.`
+  }
+
+  if (order.status === "Payé") {
+    statusMessage = `Votre paiement est bien confirmé via Dhameni.
+
+Montant : ${order.amount} TND
+
+Votre commande est maintenant prête pour la livraison.`
+  }
+
+  if (order.status === "Livré") {
+    statusMessage = `Votre commande est marquée comme livrée via Dhameni.
+
+Merci pour votre confiance.
+
+En cas de problème avec l’article, vous pouvez contacter le vendeur rapidement.`
+  }
+
+  if (order.status === "Refusé") {
+    statusMessage = `Votre commande est marquée comme refusée via Dhameni.
+
+Cette information permet de garder une trace claire entre le client, le vendeur et la livraison.`
+  }
+
+  if (order.status === "Retourné") {
+    statusMessage = `Votre commande est marquée comme retournée via Dhameni.
+
+Le retour est enregistré afin de garder une trace claire et sécurisée.`
+  }
+
+  const message = `Bonjour ${order.client_name},
+
+${statusMessage}
 
 ✔️ Commande sécurisée
 ✔️ Livraison suivie
@@ -274,8 +309,8 @@ ${order.payment_link ? `Lien de paiement : ${order.payment_link}` : ""}
 
 Merci.`
 
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
-  }
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
+}
 
   function getStatusBadgeStyle(status: OrderStatus): React.CSSProperties {
     const base: React.CSSProperties = {
