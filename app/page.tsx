@@ -607,6 +607,20 @@ Merci.`
                     <div><strong>User commande :</strong> {order.user_id}</div>
                   </div>
 
+                  {order.public_token && (
+  <div>
+    <strong>Suivi client :</strong>{" "}
+    <a
+      href={`/suivi/${order.public_token}`}
+      target="_blank"
+      rel="noreferrer"
+      style={{ color: "#2563eb" }}
+    >
+      Ouvrir
+    </a>
+  </div>
+)}
+
                   {order.payment_link && (
                     <div
                       style={{
@@ -666,6 +680,24 @@ Merci.`
                       WhatsApp
                     </button>
                   </div>
+
+                  {order.public_token && (
+  <button
+    onClick={() => {
+      const suiviLink = `${window.location.origin}/suivi/${order.public_token}`
+      navigator.clipboard.writeText(suiviLink)
+      alert("Lien de suivi copié")
+    }}
+    style={{
+      ...styles.smallButton,
+      backgroundColor: "#ecfdf5",
+      color: "#065f46",
+      border: "1px solid #a7f3d0",
+    }}
+  >
+    Copier suivi
+  </button>
+)}
 
                   <div
                     style={{
