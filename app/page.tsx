@@ -22,6 +22,7 @@ type Order = {
   status: OrderStatus
   created_at: string
   user_id: string | null
+  public_token: string | null
 }
 
 const styles = {
@@ -258,6 +259,7 @@ export default function Home() {
 
   function openWhatsApp(order: Order) {
   const phone = formatPhoneForWhatsApp(order.phone)
+  const suiviLink = `${window.location.origin}/suivi/${order.public_token}`
 
   let statusMessage = ""
 
@@ -293,18 +295,20 @@ Le retour est enregistré pour garantir la transparence.`
 
   const message = `Bonjour ${order.client_name},
 
-${statusMessage}
+Votre commande est enregistrée via Dhameni.
 
-💰 Montant : ${order.amount} TND
+Montant : ${order.amount} TND
+Statut : ${order.status}
 
-🔒 Dhameni garantit :
-✔️ Suivi de livraison
-✔️ Sécurité commande
-✔️ Traçabilité en cas de problème
+🔎 Suivre votre commande : ${suiviLink}
 
-${order.payment_link ? `👉 Paiement sécurisé : ${order.payment_link}` : ""}
+✔️ Commande sécurisée
+✔️ Livraison suivie
+✔️ Traçabilité en cas de refus ou retour
 
-Merci 🙏`
+${order.payment_link ? `Lien de paiement : ${order.payment_link}` : ""}
+
+Merci.`
 
   window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
 }
