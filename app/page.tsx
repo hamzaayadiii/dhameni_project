@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "../lib/supabase"
 import { QRCodeSVG } from "qrcode.react"
 
@@ -20,6 +21,7 @@ type Order = {
   payment_link: string | null
   status: OrderStatus
   created_at: string
+  user_id: string | null
 }
 
 const styles = {
@@ -73,6 +75,9 @@ const styles = {
 }
 
 export default function Home() {
+  const router = useRouter()
+
+  const [user, setUser] = useState<any>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -86,16 +91,33 @@ export default function Home() {
   const [paymentLink, setPaymentLink] = useState("")
 
   useEffect(() => {
-    fetchOrders()
+    checkUser()
   }, [])
 
-  async function fetchOrders() {
+  async function checkUser() {
+    const { data } = await supabase.auth.getUser()
+
+    if (!data.user) {
+      router.push("/login")
+      return
+    }
+
+    setUser(data.user)
+    await fetchOrders(data.user.id)
+  }
+
+  async function fetchOrders(userId?: string) {
+    const activeUserId = userId || user?.id
+
+    if (!activeUserId) return
+
     setLoading(true)
     setErrorMessage("")
 
     const { data, error } = await supabase
       .from("orders")
       .select("*")
+      .eq("user_id", activeUserId)
       .order("id", { ascending: false })
 
     if (error) {
@@ -109,8 +131,18 @@ export default function Home() {
     setLoading(false)
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push("/login")
+  }
+
   async function handleAddOrder(e: React.FormEvent) {
     e.preventDefault()
+
+    if (!user) {
+      router.push("/login")
+      return
+    }
 
     if (!clientName.trim() || !phone.trim() || !amount.trim()) {
       alert("Remplis le nom du client, le téléphone et le montant.")
@@ -128,6 +160,7 @@ export default function Home() {
         description: description.trim() || null,
         payment_link: paymentLink.trim() || null,
         status: "En attente paiement",
+        user_id: user.id,
       },
     ])
 
@@ -141,7 +174,7 @@ export default function Home() {
       setAmount("")
       setDescription("")
       setPaymentLink("")
-      await fetchOrders()
+      await fetchOrders(user.id)
       alert("Commande ajoutée avec succès")
     }
 
@@ -149,34 +182,43 @@ export default function Home() {
   }
 
   async function updateOrderStatus(id: number, newStatus: OrderStatus) {
+    if (!user) return
+
     setErrorMessage("")
 
     const { error } = await supabase
       .from("orders")
       .update({ status: newStatus })
       .eq("id", id)
+      .eq("user_id", user.id)
 
     if (error) {
       console.log("Erreur update status :", error.message)
       setErrorMessage(error.message)
       alert("Erreur lors du changement de statut.")
     } else {
-      await fetchOrders()
+      await fetchOrders(user.id)
     }
   }
 
   async function deleteOrder(id: number) {
+    if (!user) return
+
     const confirmed = window.confirm("Supprimer cette commande ?")
     if (!confirmed) return
 
-    const { error } = await supabase.from("orders").delete().eq("id", id)
+    const { error } = await supabase
+      .from("orders")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id)
 
     if (error) {
       console.log("Erreur suppression :", error.message)
       setErrorMessage(error.message)
       alert("Erreur lors de la suppression.")
     } else {
-      await fetchOrders()
+      await fetchOrders(user.id)
     }
   }
 
@@ -200,10 +242,15 @@ export default function Home() {
 
     const message = `Bonjour ${order.client_name},
 
-Votre commande Dhameni est prête.
+Votre commande est enregistrée via Dhameni.
 
 Montant : ${order.amount} TND
 Statut : ${order.status}
+
+✔️ Commande sécurisée
+✔️ Livraison suivie
+✔️ Traçabilité en cas de refus ou retour
+
 ${order.payment_link ? `Lien de paiement : ${order.payment_link}` : ""}
 
 Merci.`
@@ -250,6 +297,16 @@ Merci.`
     }
   }, [orders])
 
+  if (!user && loading) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.container}>
+          <p>Chargement...</p>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main style={styles.page}>
       <div style={styles.container}>
@@ -263,13 +320,7 @@ Merci.`
             color: "#ffffff",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "18px",
-            }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
             <div>
               <div
                 style={{
@@ -282,48 +333,23 @@ Merci.`
                   marginBottom: "12px",
                 }}
               >
-                V0 • Paiement • WhatsApp • Suivi
+                V1 • Compte vendeur • Paiement • WhatsApp • Suivi
               </div>
 
-              <h1
-                style={{
-                  fontSize: "34px",
-                  margin: "0 0 10px 0",
-                  lineHeight: 1.1,
-                }}
-              >
+              <h1 style={{ fontSize: "34px", margin: "0 0 10px 0", lineHeight: 1.1 }}>
                 Dhameni 🚀
               </h1>
 
-              <p
-                style={{
-                  fontSize: "17px",
-                  margin: "0 0 10px 0",
-                  color: "#e5e7eb",
-                  lineHeight: 1.5,
-                }}
-              >
+              <p style={{ fontSize: "17px", margin: "0 0 10px 0", color: "#e5e7eb", lineHeight: 1.5 }}>
                 Sécurisez vos commandes, paiements et livraisons en toute simplicité.
               </p>
 
-              <p
-                style={{
-                  fontSize: "14px",
-                  margin: 0,
-                  color: "#d1d5db",
-                  lineHeight: 1.5,
-                }}
-              >
+              <p style={{ fontSize: "14px", margin: 0, color: "#d1d5db", lineHeight: 1.5 }}>
                 Moins de refus. Plus de confiance. Plus simple.
               </p>
             </div>
 
-            <div
-              style={{
-                display: "grid",
-                gap: "10px",
-              }}
-            >
+            <div style={{ display: "grid", gap: "10px" }}>
               <div
                 style={{
                   backgroundColor: "rgba(255,255,255,0.08)",
@@ -333,17 +359,20 @@ Merci.`
                 }}
               >
                 <div style={{ fontSize: "13px", color: "#d1d5db" }}>
-                  Ce que fait Dhameni
+                  Connecté : {user?.email}
                 </div>
-                <div style={{ marginTop: "8px", fontWeight: 700 }}>
-                  Créer une commande
-                </div>
-                <div style={{ marginTop: "4px", fontWeight: 700 }}>
-                  Envoyer le lien paiement
-                </div>
-                <div style={{ marginTop: "4px", fontWeight: 700 }}>
-                  Suivre le statut
-                </div>
+
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    ...styles.button,
+                    backgroundColor: "#ffffff",
+                    color: "#111827",
+                    marginTop: "12px",
+                  }}
+                >
+                  Se déconnecter
+                </button>
               </div>
             </div>
           </div>
@@ -359,49 +388,26 @@ Merci.`
         >
           <div style={{ ...styles.card, padding: "16px" }}>
             <div style={{ fontSize: "13px", color: "#6b7280" }}>Total commandes</div>
-            <div style={{ fontSize: "28px", fontWeight: 800, marginTop: "6px" }}>
-              {stats.total}
-            </div>
+            <div style={{ fontSize: "28px", fontWeight: 800, marginTop: "6px" }}>{stats.total}</div>
           </div>
 
           <div style={{ ...styles.card, padding: "16px" }}>
             <div style={{ fontSize: "13px", color: "#6b7280" }}>En attente</div>
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: 800,
-                marginTop: "6px",
-                color: "#92400e",
-              }}
-            >
+            <div style={{ fontSize: "28px", fontWeight: 800, marginTop: "6px", color: "#92400e" }}>
               {stats.pending}
             </div>
           </div>
 
           <div style={{ ...styles.card, padding: "16px" }}>
             <div style={{ fontSize: "13px", color: "#6b7280" }}>Payées</div>
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: 800,
-                marginTop: "6px",
-                color: "#166534",
-              }}
-            >
+            <div style={{ fontSize: "28px", fontWeight: 800, marginTop: "6px", color: "#166534" }}>
               {stats.paid}
             </div>
           </div>
 
           <div style={{ ...styles.card, padding: "16px" }}>
             <div style={{ fontSize: "13px", color: "#6b7280" }}>Livrées</div>
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: 800,
-                marginTop: "6px",
-                color: "#1d4ed8",
-              }}
-            >
+            <div style={{ fontSize: "28px", fontWeight: 800, marginTop: "6px", color: "#1d4ed8" }}>
               {stats.delivered}
             </div>
           </div>
@@ -420,18 +426,11 @@ Merci.`
               Ajouter une commande
             </h2>
             <p style={{ margin: 0, color: "#6b7280", fontSize: "14px", lineHeight: 1.5 }}>
-              Remplissez les informations du client et ajoutez un lien de paiement
-              si disponible.
+              Pour les vendeurs Facebook, Instagram ou WhatsApp : crée une commande, ajoute un lien de paiement si disponible, puis envoie-la au client.
             </p>
           </div>
 
-          <form
-            onSubmit={handleAddOrder}
-            style={{
-              display: "grid",
-              gap: "12px",
-            }}
-          >
+          <form onSubmit={handleAddOrder} style={{ display: "grid", gap: "12px" }}>
             <input
               type="text"
               placeholder="Nom du client"
@@ -489,20 +488,13 @@ Merci.`
         </section>
 
         <section style={{ ...styles.card, padding: "18px" }}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-              marginBottom: "18px",
-            }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "18px" }}>
             <div>
               <h2 style={{ margin: "0 0 6px 0", fontSize: "22px" }}>
                 Liste des commandes
               </h2>
               <p style={{ margin: 0, color: "#6b7280", fontSize: "14px", lineHeight: 1.5 }}>
-                Suivez les paiements, partagez via WhatsApp et gérez le statut.
+                Tes commandes uniquement. Partage par WhatsApp, QR code, suivi et statuts.
               </p>
             </div>
 
@@ -528,12 +520,8 @@ Merci.`
               </select>
 
               <button
-                onClick={fetchOrders}
-                style={{
-                  ...styles.button,
-                  backgroundColor: "#e5e7eb",
-                  color: "#111827",
-                }}
+                onClick={() => fetchOrders(user.id)}
+                style={{ ...styles.button, backgroundColor: "#e5e7eb", color: "#111827" }}
               >
                 Recharger
               </button>
@@ -580,13 +568,7 @@ Merci.`
                     backgroundColor: "#ffffff",
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "18px",
-                    }}
-                  >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
                     <div style={{ minWidth: 0 }}>
                       <div
                         style={{
@@ -614,19 +596,10 @@ Merci.`
                           wordBreak: "break-word",
                         }}
                       >
-                        <div>
-                          <strong>Téléphone :</strong> {order.phone}
-                        </div>
-                        <div>
-                          <strong>Montant :</strong> {order.amount} TND
-                        </div>
-                        <div>
-                          <strong>Description :</strong> {order.description || "-"}
-                        </div>
-                        <div>
-                          <strong>Paiement :</strong>{" "}
-                          {order.payment_link ? "Lien disponible" : "-"}
-                        </div>
+                        <div><strong>Téléphone :</strong> {order.phone}</div>
+                        <div><strong>Montant :</strong> {order.amount} TND</div>
+                        <div><strong>Description :</strong> {order.description || "-"}</div>
+                        <div><strong>Paiement :</strong> {order.payment_link ? "Lien disponible" : "-"}</div>
                       </div>
 
                       {order.payment_link && (
@@ -644,14 +617,7 @@ Merci.`
                         </div>
                       )}
 
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "8px",
-                          flexWrap: "wrap",
-                          marginTop: "16px",
-                        }}
-                      >
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "16px" }}>
                         {order.payment_link && (
                           <>
                             <a
@@ -705,58 +671,23 @@ Merci.`
                         gap: "8px",
                       }}
                     >
-                      <button
-                        onClick={() => updateOrderStatus(order.id, "Payé")}
-                        style={{
-                          ...styles.button,
-                          backgroundColor: "#dcfce7",
-                          color: "#166534",
-                        }}
-                      >
+                      <button onClick={() => updateOrderStatus(order.id, "Payé")} style={{ ...styles.button, backgroundColor: "#dcfce7", color: "#166534" }}>
                         Marquer Payé
                       </button>
 
-                      <button
-                        onClick={() => updateOrderStatus(order.id, "Livré")}
-                        style={{
-                          ...styles.button,
-                          backgroundColor: "#dbeafe",
-                          color: "#1d4ed8",
-                        }}
-                      >
+                      <button onClick={() => updateOrderStatus(order.id, "Livré")} style={{ ...styles.button, backgroundColor: "#dbeafe", color: "#1d4ed8" }}>
                         Marquer Livré
                       </button>
 
-                      <button
-                        onClick={() => updateOrderStatus(order.id, "Refusé")}
-                        style={{
-                          ...styles.button,
-                          backgroundColor: "#fee2e2",
-                          color: "#b91c1c",
-                        }}
-                      >
+                      <button onClick={() => updateOrderStatus(order.id, "Refusé")} style={{ ...styles.button, backgroundColor: "#fee2e2", color: "#b91c1c" }}>
                         Marquer Refusé
                       </button>
 
-                      <button
-                        onClick={() => updateOrderStatus(order.id, "Retourné")}
-                        style={{
-                          ...styles.button,
-                          backgroundColor: "#f3e8ff",
-                          color: "#7e22ce",
-                        }}
-                      >
+                      <button onClick={() => updateOrderStatus(order.id, "Retourné")} style={{ ...styles.button, backgroundColor: "#f3e8ff", color: "#7e22ce" }}>
                         Marquer Retourné
                       </button>
 
-                      <button
-                        onClick={() => deleteOrder(order.id)}
-                        style={{
-                          ...styles.button,
-                          backgroundColor: "#111827",
-                          color: "#ffffff",
-                        }}
-                      >
+                      <button onClick={() => deleteOrder(order.id)} style={{ ...styles.button, backgroundColor: "#111827", color: "#ffffff" }}>
                         Supprimer
                       </button>
                     </div>

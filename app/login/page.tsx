@@ -11,11 +11,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   async function handleLogin() {
+    if (!email.trim() || !password.trim()) {
+      alert("Entre ton email et ton mot de passe.")
+      return
+    }
+
     setLoading(true)
 
     const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+      email: email.trim(),
+      password: password.trim(),
     })
 
     setLoading(false)
@@ -28,11 +33,21 @@ export default function LoginPage() {
   }
 
   async function handleSignup() {
+    if (!email.trim() || !password.trim()) {
+      alert("Entre ton email et ton mot de passe.")
+      return
+    }
+
+    if (password.length < 6) {
+      alert("Le mot de passe doit contenir au moins 6 caractères.")
+      return
+    }
+
     setLoading(true)
 
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
+      email: email.trim(),
+      password: password.trim(),
     })
 
     setLoading(false)
@@ -45,54 +60,96 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "20px",
-      background: "linear-gradient(135deg, #111827, #065f46)",
-      fontFamily: "Arial, sans-serif",
-    }}>
-      <div style={{
-        width: "100%",
-        maxWidth: "420px",
-        backgroundColor: "white",
-        padding: "24px",
-        borderRadius: "18px",
-      }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+        background: "linear-gradient(135deg, #111827, #065f46)",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "420px",
+          backgroundColor: "white",
+          padding: "24px",
+          borderRadius: "18px",
+        }}
+      >
         <h1 style={{ marginTop: 0 }}>Dhameni 🚀</h1>
+
         <p style={{ color: "#6b7280" }}>
           Connecte-toi pour gérer tes commandes sécurisées.
         </p>
 
         <input
+          type="email"
           placeholder="Email"
           value={email}
+          autoComplete="email"
           onChange={(e) => setEmail(e.target.value)}
-          style={{ width: "100%", padding: 14, marginBottom: 12, borderRadius: 10, border: "1px solid #d1d5db" }}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            padding: 14,
+            marginBottom: 12,
+            borderRadius: 10,
+            border: "1px solid #d1d5db",
+          }}
         />
 
         <input
           type="password"
           placeholder="Mot de passe"
           value={password}
+          autoComplete="current-password"
           onChange={(e) => setPassword(e.target.value)}
-          style={{ width: "100%", padding: 14, marginBottom: 12, borderRadius: 10, border: "1px solid #d1d5db" }}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            padding: 14,
+            marginBottom: 12,
+            borderRadius: 10,
+            border: "1px solid #d1d5db",
+          }}
         />
 
         <button
+          type="button"
           onClick={handleLogin}
           disabled={loading}
-          style={{ width: "100%", padding: 14, borderRadius: 10, border: "none", backgroundColor: "#111827", color: "white", fontWeight: 700, marginBottom: 10 }}
+          style={{
+            width: "100%",
+            padding: 14,
+            borderRadius: 10,
+            border: "none",
+            backgroundColor: "#111827",
+            color: "white",
+            fontWeight: 700,
+            marginBottom: 10,
+            cursor: "pointer",
+          }}
         >
           {loading ? "Chargement..." : "Se connecter"}
         </button>
 
         <button
+          type="button"
           onClick={handleSignup}
           disabled={loading}
-          style={{ width: "100%", padding: 14, borderRadius: 10, border: "1px solid #d1d5db", backgroundColor: "white", fontWeight: 700 }}
+          style={{
+            width: "100%",
+            padding: 14,
+            borderRadius: 10,
+            border: "1px solid #d1d5db",
+            backgroundColor: "white",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
         >
           Créer un compte
         </button>
