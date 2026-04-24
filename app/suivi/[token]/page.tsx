@@ -13,6 +13,8 @@ type Order = {
   payment_link: string | null
   status: string
   public_token: string
+  return_requested: boolean | null
+  return_reason: string | null
 }
 
 export default function SuiviCommandePage() {
@@ -22,11 +24,16 @@ export default function SuiviCommandePage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const [reason, setReason] = useState("")
+  const [sending, setSending] = useState(false)
+
   useEffect(() => {
     fetchOrder()
   }, [])
 
   async function fetchOrder() {
+    setLoading(true)
+
     const { data, error } = await supabase
       .from("orders")
       .select("*")
@@ -41,6 +48,35 @@ export default function SuiviCommandePage() {
     }
 
     setLoading(false)
+  }
+
+  async function handleReturnRequest() {
+    if (!reason.trim()) {
+      alert("Merci d’indiquer la raison du retour.")
+      return
+    }
+
+    setSending(true)
+
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        return_requested: true,
+        return_reason: reason.trim(),
+        status: "Retourné",
+      })
+      .eq("public_token", token)
+
+    setSending(false)
+
+    if (error) {
+      alert("Erreur lors de l’envoi de la demande.")
+      console.log(error.message)
+    } else {
+      alert("Demande de retour envoyée.")
+      setReason("")
+      await fetchOrder()
+    }
   }
 
   if (loading) {
@@ -84,10 +120,18 @@ export default function SuiviCommandePage() {
             marginTop: "16px",
           }}
         >
-          <p><strong>Client :</strong> {order.client_name}</p>
-          <p><strong>Montant :</strong> {order.amount} TND</p>
-          <p><strong>Description :</strong> {order.description || "-"}</p>
-          <p><strong>Statut :</strong> {order.status}</p>
+          <p>
+            <strong>Client :</strong> {order.client_name}
+          </p>
+          <p>
+            <strong>Montant :</strong> {order.amount} TND
+          </p>
+          <p>
+            <strong>Description :</strong> {order.description || "-"}
+          </p>
+          <p>
+            <strong>Statut :</strong> {order.status}
+          </p>
         </div>
 
         {order.payment_link && (
@@ -124,6 +168,61 @@ export default function SuiviCommandePage() {
           ✔️ Commande tracée <br />
           ✔️ Statut visible <br />
           ✔️ Sécurité Dhameni
+        </div>
+
+        <div
+          style={{
+            marginTop: "18px",
+            padding: "14px",
+            borderRadius: "14px",
+            background: "#fff7ed",
+            border: "1px solid #fed7aa",
+          }}
+        >
+          <h3 style={{ marginTop: 0 }}>Demander un retour</h3>
+
+          {order.return_requested ? (
+            <div style={{ color: "#9a3412", fontSize: "14px" }}>
+              <strong>Demande de retour envoyée.</strong>
+              <br />
+              Raison : {order.return_reason || "-"}
+            </div>
+          ) : (
+            <>
+              <textarea
+                placeholder="Expliquez brièvement la raison du retour"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={3}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: "1px solid #d1d5db",
+                  marginBottom: "10px",
+                  resize: "vertical",
+                }}
+              />
+
+              <button
+                onClick={handleReturnRequest}
+                disabled={sending}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: "10px",
+                  backgroundColor: "#f97316",
+                  color: "white",
+                  fontWeight: 700,
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {sending ? "Envoi..." : "Envoyer demande de retour"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </main>

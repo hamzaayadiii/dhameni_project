@@ -23,6 +23,8 @@ type Order = {
   created_at: string
   user_id: string | null
   public_token: string | null
+  return_requested: boolean | null
+  return_reason: string | null
 }
 
 const styles = {
@@ -111,8 +113,6 @@ export default function Home() {
       return
     }
 
-    console.log("USER CONNECTÉ:", user.id)
-
     setUserId(user.id)
     setUserEmail(user.email || "")
     await fetchOrders(user.id)
@@ -123,12 +123,7 @@ export default function Home() {
   async function fetchOrders(activeUserId?: string) {
     const id = activeUserId || userId
 
-    if (!id) {
-      console.log("PAS DE USER ID POUR FETCH")
-      return
-    }
-
-    console.log("FETCH ORDERS POUR:", id)
+    if (!id) return
 
     setOrdersLoading(true)
     setErrorMessage("")
@@ -138,9 +133,6 @@ export default function Home() {
       .select("*")
       .eq("user_id", id)
       .order("id", { ascending: false })
-
-    console.log("ORDERS DATA:", data)
-    console.log("ORDERS ERROR:", error)
 
     if (error) {
       setErrorMessage(error.message)
@@ -184,15 +176,7 @@ export default function Home() {
       user_id: userId,
     }
 
-    console.log("INSERT ORDER:", newOrder)
-
-    const { data, error } = await supabase
-      .from("orders")
-      .insert([newOrder])
-      .select()
-
-    console.log("INSERT DATA:", data)
-    console.log("INSERT ERROR:", error)
+    const { error } = await supabase.from("orders").insert([newOrder]).select()
 
     if (error) {
       setErrorMessage(error.message)
@@ -253,49 +237,58 @@ export default function Home() {
     alert("Lien copié")
   }
 
+  async function copyTrackingLink(token: string | null) {
+    if (!token) return
+    const suiviLink = `${window.location.origin}/suivi/${token}`
+    await navigator.clipboard.writeText(suiviLink)
+    alert("Lien de suivi copié")
+  }
+
   function formatPhoneForWhatsApp(phone: string) {
     return phone.replace(/\D/g, "")
   }
 
   function openWhatsApp(order: Order) {
-  const phone = formatPhoneForWhatsApp(order.phone)
-  const suiviLink = `${window.location.origin}/suivi/${order.public_token}`
+    const phone = formatPhoneForWhatsApp(order.phone)
+    const suiviLink = `${window.location.origin}/suivi/${order.public_token}`
 
-  let statusMessage = ""
+    let statusMessage = ""
 
-  if (order.status === "En attente paiement") {
-    statusMessage = `Votre commande est prête.
+    if (order.status === "En attente paiement") {
+      statusMessage = `Votre commande est prête.
 
 Pour éviter les annulations et garantir la livraison, merci de confirmer ou payer.`
-  }
+    }
 
-  if (order.status === "Payé") {
-    statusMessage = `Paiement confirmé.
+    if (order.status === "Payé") {
+      statusMessage = `Paiement confirmé.
 
 Votre commande est en cours de préparation pour livraison.`
-  }
+    }
 
-  if (order.status === "Livré") {
-    statusMessage = `Commande livrée avec succès.
+    if (order.status === "Livré") {
+      statusMessage = `Commande livrée avec succès.
 
 Merci pour votre confiance.`
-  }
+    }
 
-  if (order.status === "Refusé") {
-    statusMessage = `Commande refusée.
+    if (order.status === "Refusé") {
+      statusMessage = `Commande refusée.
 
 Cette action est enregistrée dans le système Dhameni.`
-  }
+    }
 
-  if (order.status === "Retourné") {
-    statusMessage = `Commande retournée.
+    if (order.status === "Retourné") {
+      statusMessage = `Commande retournée.
 
 Le retour est enregistré pour garantir la transparence.`
-  }
+    }
 
-  const message = `Bonjour ${order.client_name},
+    const message = `Bonjour ${order.client_name},
 
 Votre commande est enregistrée via Dhameni.
+
+${statusMessage}
 
 Montant : ${order.amount} TND
 Statut : ${order.status}
@@ -310,8 +303,8 @@ ${order.payment_link ? `Lien de paiement : ${order.payment_link}` : ""}
 
 Merci.`
 
-  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
-}
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
+  }
 
   function getStatusBadgeStyle(status: OrderStatus): React.CSSProperties {
     const base: React.CSSProperties = {
@@ -346,6 +339,7 @@ Merci.`
       pending: orders.filter((o) => o.status === "En attente paiement").length,
       paid: orders.filter((o) => o.status === "Payé").length,
       delivered: orders.filter((o) => o.status === "Livré").length,
+      returns: orders.filter((o) => o.return_requested).length,
     }
   }, [orders])
 
@@ -385,7 +379,7 @@ Merci.`
                   marginBottom: "12px",
                 }}
               >
-                V1 • Compte vendeur • Paiement • WhatsApp • Suivi
+                V1 • Compte vendeur • Paiement • WhatsApp • Suivi • Retour
               </div>
 
               <h1 style={{ fontSize: "34px", margin: "0 0 10px 0" }}>
@@ -412,9 +406,6 @@ Merci.`
               <div style={{ fontSize: "13px", color: "#d1d5db" }}>
                 Connecté : {userEmail}
               </div>
-              <div style={{ fontSize: "12px", color: "#d1d5db", marginTop: "6px" }}>
-                User ID : {userId}
-              </div>
 
               <button
                 onClick={handleLogout}
@@ -434,7 +425,7 @@ Merci.`
         <section
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
             gap: "12px",
             marginBottom: "18px",
           }}
@@ -462,6 +453,13 @@ Merci.`
             <div style={{ fontSize: "13px", color: "#6b7280" }}>Livrées</div>
             <div style={{ fontSize: "28px", fontWeight: 800, color: "#1d4ed8" }}>
               {stats.delivered}
+            </div>
+          </div>
+
+          <div style={{ ...styles.card, padding: "16px" }}>
+            <div style={{ fontSize: "13px", color: "#6b7280" }}>Retours demandés</div>
+            <div style={{ fontSize: "28px", fontWeight: 800, color: "#ea580c" }}>
+              {stats.returns}
             </div>
           </div>
         </section>
@@ -565,7 +563,14 @@ Merci.`
           </div>
 
           {errorMessage && (
-            <p style={{ color: "#b91c1c", backgroundColor: "#fee2e2", padding: "12px", borderRadius: "10px" }}>
+            <p
+              style={{
+                color: "#b91c1c",
+                backgroundColor: "#fee2e2",
+                padding: "12px",
+                borderRadius: "10px",
+              }}
+            >
               Erreur : {errorMessage}
             </p>
           )}
@@ -600,26 +605,49 @@ Merci.`
                   <div style={getStatusBadgeStyle(order.status)}>{order.status}</div>
 
                   <div style={{ marginTop: "14px", display: "grid", gap: "8px" }}>
-                    <div><strong>Téléphone :</strong> {order.phone}</div>
-                    <div><strong>Montant :</strong> {order.amount} TND</div>
-                    <div><strong>Description :</strong> {order.description || "-"}</div>
-                    <div><strong>Paiement :</strong> {order.payment_link ? "Lien disponible" : "-"}</div>
-                    <div><strong>User commande :</strong> {order.user_id}</div>
-                  </div>
+                    <div>
+                      <strong>Téléphone :</strong> {order.phone}
+                    </div>
+                    <div>
+                      <strong>Montant :</strong> {order.amount} TND
+                    </div>
+                    <div>
+                      <strong>Description :</strong> {order.description || "-"}
+                    </div>
+                    <div>
+                      <strong>Paiement :</strong>{" "}
+                      {order.payment_link ? "Lien disponible" : "-"}
+                    </div>
 
-                  {order.public_token && (
-  <div>
-    <strong>Suivi client :</strong>{" "}
-    <a
-      href={`/suivi/${order.public_token}`}
-      target="_blank"
-      rel="noreferrer"
-      style={{ color: "#2563eb" }}
-    >
-      Ouvrir
-    </a>
-  </div>
-)}
+                    {order.public_token && (
+                      <div>
+                        <strong>Suivi client :</strong>{" "}
+                        <a
+                          href={`/suivi/${order.public_token}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "#2563eb" }}
+                        >
+                          Ouvrir
+                        </a>
+                      </div>
+                    )}
+
+                    {order.return_requested && (
+                      <div
+                        style={{
+                          padding: "10px",
+                          borderRadius: "10px",
+                          backgroundColor: "#fff7ed",
+                          border: "1px solid #fed7aa",
+                          color: "#9a3412",
+                        }}
+                      >
+                        <strong>Demande de retour :</strong>{" "}
+                        {order.return_reason || "-"}
+                      </div>
+                    )}
+                  </div>
 
                   {order.payment_link && (
                     <div
@@ -651,7 +679,7 @@ Merci.`
                             border: "none",
                           }}
                         >
-                          Ouvrir
+                          Ouvrir paiement
                         </a>
 
                         <button
@@ -663,9 +691,23 @@ Merci.`
                             border: "1px solid #d1d5db",
                           }}
                         >
-                          Copier
+                          Copier paiement
                         </button>
                       </>
+                    )}
+
+                    {order.public_token && (
+                      <button
+                        onClick={() => copyTrackingLink(order.public_token)}
+                        style={{
+                          ...styles.smallButton,
+                          backgroundColor: "#ecfdf5",
+                          color: "#065f46",
+                          border: "1px solid #a7f3d0",
+                        }}
+                      >
+                        Copier suivi
+                      </button>
                     )}
 
                     <button
@@ -681,24 +723,6 @@ Merci.`
                     </button>
                   </div>
 
-                  {order.public_token && (
-  <button
-    onClick={() => {
-      const suiviLink = `${window.location.origin}/suivi/${order.public_token}`
-      navigator.clipboard.writeText(suiviLink)
-      alert("Lien de suivi copié")
-    }}
-    style={{
-      ...styles.smallButton,
-      backgroundColor: "#ecfdf5",
-      color: "#065f46",
-      border: "1px solid #a7f3d0",
-    }}
-  >
-    Copier suivi
-  </button>
-)}
-
                   <div
                     style={{
                       display: "grid",
@@ -707,19 +731,54 @@ Merci.`
                       marginTop: "16px",
                     }}
                   >
-                    <button onClick={() => updateOrderStatus(order.id, "Payé")} style={{ ...styles.button, backgroundColor: "#dcfce7", color: "#166534" }}>
+                    <button
+                      onClick={() => updateOrderStatus(order.id, "Payé")}
+                      style={{
+                        ...styles.button,
+                        backgroundColor: "#dcfce7",
+                        color: "#166534",
+                      }}
+                    >
                       Marquer Payé
                     </button>
-                    <button onClick={() => updateOrderStatus(order.id, "Livré")} style={{ ...styles.button, backgroundColor: "#dbeafe", color: "#1d4ed8" }}>
+                    <button
+                      onClick={() => updateOrderStatus(order.id, "Livré")}
+                      style={{
+                        ...styles.button,
+                        backgroundColor: "#dbeafe",
+                        color: "#1d4ed8",
+                      }}
+                    >
                       Marquer Livré
                     </button>
-                    <button onClick={() => updateOrderStatus(order.id, "Refusé")} style={{ ...styles.button, backgroundColor: "#fee2e2", color: "#b91c1c" }}>
+                    <button
+                      onClick={() => updateOrderStatus(order.id, "Refusé")}
+                      style={{
+                        ...styles.button,
+                        backgroundColor: "#fee2e2",
+                        color: "#b91c1c",
+                      }}
+                    >
                       Marquer Refusé
                     </button>
-                    <button onClick={() => updateOrderStatus(order.id, "Retourné")} style={{ ...styles.button, backgroundColor: "#f3e8ff", color: "#7e22ce" }}>
+                    <button
+                      onClick={() => updateOrderStatus(order.id, "Retourné")}
+                      style={{
+                        ...styles.button,
+                        backgroundColor: "#f3e8ff",
+                        color: "#7e22ce",
+                      }}
+                    >
                       Marquer Retourné
                     </button>
-                    <button onClick={() => deleteOrder(order.id)} style={{ ...styles.button, backgroundColor: "#111827", color: "#ffffff" }}>
+                    <button
+                      onClick={() => deleteOrder(order.id)}
+                      style={{
+                        ...styles.button,
+                        backgroundColor: "#111827",
+                        color: "#ffffff",
+                      }}
+                    >
                       Supprimer
                     </button>
                   </div>
