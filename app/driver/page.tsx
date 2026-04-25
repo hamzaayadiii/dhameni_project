@@ -85,7 +85,9 @@ export default function DriverPage() {
     .from("proofs")
     .upload(fileName, file)
 
+  // 👉 ICI on log l’erreur
   if (error) {
+    console.log("UPLOAD ERROR:", error)
     alert("Erreur upload")
     return
   }
@@ -94,13 +96,20 @@ export default function DriverPage() {
     .from("proofs")
     .getPublicUrl(fileName)
 
-  await supabase
-  .from("orders")
-  .update({
-    proof_image_url: publicUrl.publicUrl,
-    proof_uploaded_at: new Date().toISOString(),
-  })
-  .eq("id", orderId)
+  const { error: updateError } = await supabase
+    .from("orders")
+    .update({
+      proof_image_url: publicUrl.publicUrl,
+      proof_uploaded_at: new Date().toISOString(),
+    })
+    .eq("id", orderId)
+
+  // 👉 ICI aussi (important)
+  if (updateError) {
+    console.log("DB UPDATE ERROR:", updateError)
+    alert("Erreur sauvegarde preuve")
+    return
+  }
 
   fetchOrders(driverId)
 }
