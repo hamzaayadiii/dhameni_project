@@ -6,9 +6,25 @@ import { supabase } from "../../lib/supabase"
 
 export default function LoginPage() {
   const router = useRouter()
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [role, setRole] = useState<"seller" | "driver">("seller")
   const [loading, setLoading] = useState(false)
+
+  async function redirectByRole(userId: string) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .single()
+
+    if (data?.role === "driver") {
+      router.push("/driver")
+    } else {
+      router.push("/")
+    }
+  }
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
@@ -18,15 +34,21 @@ export default function LoginPage() {
 
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password: password.trim(),
     })
 
     setLoading(false)
 
-    if (error) alert(error.message)
-    else router.push("/")
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    if (data.user) {
+      await redirectByRole(data.user.id)
+    }
   }
 
   async function handleSignup() {
@@ -42,20 +64,34 @@ export default function LoginPage() {
 
     setLoading(true)
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password: password.trim(),
     })
 
-    setLoading(false)
+    if (error) {
+      setLoading(false)
+      alert(error.message)
+      return
+    }
 
-    if (error) alert(error.message)
-    else alert("Compte créé. Connecte-toi maintenant.")
+    if (data.user) {
+      await supabase.from("profiles").insert([
+        {
+          id: data.user.id,
+          email: email.trim(),
+          role,
+        },
+      ])
+    }
+
+    setLoading(false)
+    alert("Compte créé. Connecte-toi maintenant.")
   }
 
   async function handleForgotPassword() {
     if (!email.trim()) {
-      alert("Entre ton email pour recevoir le lien de réinitialisation.")
+      alert("Entre ton email pour recevoir le lien.")
       return
     }
 
@@ -93,7 +129,7 @@ export default function LoginPage() {
         <h1 style={{ marginTop: 0 }}>Dhameni 🚀</h1>
 
         <p style={{ color: "#6b7280" }}>
-          Connecte-toi pour gérer tes commandes sécurisées.
+          Sécurisez vos commandes, livraisons et retours.
         </p>
 
         <input
@@ -126,8 +162,23 @@ export default function LoginPage() {
           }}
         />
 
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as "seller" | "driver")}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            padding: 14,
+            marginBottom: 12,
+            borderRadius: 10,
+            border: "1px solid #d1d5db",
+          }}
+        >
+          <option value="seller">Je suis vendeur</option>
+          <option value="driver">Je suis livreur</option>
+        </select>
+
         <button
-          type="button"
           onClick={handleLogin}
           disabled={loading}
           style={{
@@ -146,7 +197,6 @@ export default function LoginPage() {
         </button>
 
         <button
-          type="button"
           onClick={handleSignup}
           disabled={loading}
           style={{
@@ -164,7 +214,6 @@ export default function LoginPage() {
         </button>
 
         <button
-          type="button"
           onClick={handleForgotPassword}
           style={{
             width: "100%",

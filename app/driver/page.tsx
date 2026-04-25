@@ -28,19 +28,38 @@ export default function DriverPage() {
   }, [])
 
   async function initDriver() {
-    const { data } = await supabase.auth.getSession()
-    const user = data.session?.user
+  setLoading(true)
 
-    if (!user) {
-      router.push("/login")
-      return
-    }
+  const { data } = await supabase.auth.getSession()
+  const user = data.session?.user
 
-    setDriverId(user.id)
-    setDriverEmail(user.email || "")
-    await fetchOrders(user.id)
-    setLoading(false)
+  if (!user) {
+    router.push("/login")
+    return
   }
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (error || !profile) {
+    await supabase.auth.signOut()
+    router.push("/login")
+    return
+  }
+
+  if (profile.role !== "driver") {
+    router.push("/")
+    return
+  }
+
+  setDriverId(user.id)
+  setDriverEmail(user.email || "")
+  await fetchOrders(user.id)
+  setLoading(false)
+}
 
   async function fetchOrders(currentDriverId = driverId) {
     const { data, error } = await supabase

@@ -99,28 +99,53 @@ export default function Home() {
   }, [])
 
   async function initAuth() {
-    setAuthLoading(true)
+  setAuthLoading(true)
 
-    const { data, error } = await supabase.auth.getSession()
+  const { data, error } = await supabase.auth.getSession()
 
-    if (error) {
-      router.push("/login")
-      return
-    }
-
-    const user = data.session?.user
-
-    if (!user) {
-      router.push("/login")
-      return
-    }
-
-    setUserId(user.id)
-    setUserEmail(user.email || "")
-    await fetchOrders(user.id)
-
-    setAuthLoading(false)
+  if (error) {
+    router.push("/login")
+    return
   }
+
+  const user = data.session?.user
+
+  if (!user) {
+    router.push("/login")
+    return
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (profileError) {
+    alert("Erreur lecture profil : " + profileError.message)
+    await supabase.auth.signOut()
+    router.push("/login")
+    return
+  }
+
+  if (!profile) {
+    alert("Profil manquant. Crée un nouveau compte vendeur/livreur depuis la page login.")
+    await supabase.auth.signOut()
+    router.push("/login")
+    return
+  }
+
+  if (profile.role === "driver") {
+    router.push("/driver")
+    return
+  }
+
+  setUserId(user.id)
+  setUserEmail(user.email || "")
+  await fetchOrders(user.id)
+
+  setAuthLoading(false)
+}
 
   async function fetchOrders(activeUserId?: string) {
     const id = activeUserId || userId
