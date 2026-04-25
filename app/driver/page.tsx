@@ -351,14 +351,31 @@ Merci de rester disponible pour la livraison.`
                     </button>
                   )}
 
-                <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
+                <label
+                    style={{
+                        display: "block",
+                        marginTop: "14px",
+                        padding: "12px",
+                        borderRadius: "10px",
+                        background: "#111827",
+                        color: "white",
+                        textAlign: "center",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                    }}
+                    >
+                    Ajouter preuve photo 📸
+                    <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
                         const file = e.target.files?.[0]
                         if (file) uploadProof(order.id, file)
-                    }}
+                        }}
                     />
+                    </label>
 
                   {isMine && (
                     <>
