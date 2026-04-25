@@ -152,6 +152,24 @@ export default function DriverPage() {
     window.location.href = `tel:+${cleaned}`
   }
 
+  function notifyClient(order: Order) {
+  const phone = order.phone.replace(/\D/g, "")
+
+  const message = `Bonjour ${order.client_name},
+
+Notification Dhameni 🚚
+
+Statut livraison : ${order.delivery_status || "Pris en charge"}
+
+${order.driver_note ? `Info : ${order.driver_note}` : ""}
+
+Merci de rester disponible pour faciliter la livraison.
+
+Dhameni — commande sécurisée et suivie.`
+
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
+}
+
   function whatsappClient(order: Order) {
     const phone = order.phone.replace(/\D/g, "")
 
@@ -403,6 +421,17 @@ Merci de rester disponible pour la livraison.`
                           }}
                         >
                           Refusé
+                        </button>
+
+                        <button
+                            onClick={() => notifyClient(order)}
+                            style={{
+                                ...btn,
+                                background: "#0ea5e9",
+                                color: "white",
+                            }}
+                            >
+                            Notifier client
                         </button>
 
                         <button
