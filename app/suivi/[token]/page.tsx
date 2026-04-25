@@ -336,59 +336,63 @@ export default function SuiviCommandePage() {
         </div>
 
         <div
-          style={{
-            marginTop: "18px",
-            padding: "14px",
-            borderRadius: "14px",
-            background: "#fff7ed",
-            border: "1px solid #fed7aa",
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>Demander un retour</h3>
+  style={{
+    marginTop: "18px",
+    padding: "14px",
+    borderRadius: "14px",
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+  }}
+>
+  <h3 style={{ marginTop: 0 }}>Demander un retour</h3>
 
-          {order.return_requested ? (
-            <div style={{ color: "#9a3412", fontSize: "14px" }}>
-              <strong>Demande de retour envoyée.</strong>
-              <br />
-              Raison : {order.return_reason || "-"}
-            </div>
-          ) : (
-            <>
-              <textarea
-                placeholder="Expliquez brièvement la raison du retour"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={3}
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  border: "1px solid #d1d5db",
-                  marginBottom: "10px",
-                  resize: "vertical",
-                }}
-              />
+  {order.return_requested ? (
+    <div style={{ color: "#9a3412", fontSize: "14px" }}>
+      <strong>Demande de retour envoyée.</strong>
+      <br />
+      Raison : {order.return_reason || "-"}
+    </div>
+  ) : order.status === "Livré" || order.client_confirmed ? (
+    <>
+      <textarea
+        placeholder="Expliquez brièvement la raison du retour"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        rows={3}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "12px",
+          borderRadius: "10px",
+          border: "1px solid #d1d5db",
+          marginBottom: "10px",
+          resize: "vertical",
+        }}
+      />
 
-              <button
-                onClick={handleReturnRequest}
-                disabled={sending}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  backgroundColor: "#f97316",
-                  color: "white",
-                  fontWeight: 700,
-                  border: "none",
-                  cursor: "pointer",
-                }}
-              >
-                {sending ? "Envoi..." : "Envoyer demande de retour"}
-              </button>
-            </>
-          )}
-        </div>
+      <button
+        onClick={handleReturnRequest}
+        disabled={sending}
+        style={{
+          width: "100%",
+          padding: "12px",
+          borderRadius: "10px",
+          backgroundColor: "#f97316",
+          color: "white",
+          fontWeight: 700,
+          border: "none",
+          cursor: "pointer",
+        }}
+      >
+        {sending ? "Envoi..." : "Envoyer demande de retour"}
+      </button>
+    </>
+  ) : (
+    <p style={{ margin: 0, color: "#9a3412", fontSize: "14px" }}>
+      Le retour sera disponible après la livraison de la commande.
+    </p>
+  )}
+</div>
       </div>
     </main>
   )
