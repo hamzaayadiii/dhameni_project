@@ -25,6 +25,9 @@ type Order = {
   public_token: string | null
   return_requested: boolean | null
   return_reason: string | null
+  delivery_status: string | null
+  driver_note: string | null
+  assigned_driver_id: string | null
 }
 
 const styles = {
@@ -101,7 +104,6 @@ export default function Home() {
     const { data, error } = await supabase.auth.getSession()
 
     if (error) {
-      console.log("AUTH ERROR:", error.message)
       router.push("/login")
       return
     }
@@ -122,7 +124,6 @@ export default function Home() {
 
   async function fetchOrders(activeUserId?: string) {
     const id = activeUserId || userId
-
     if (!id) return
 
     setOrdersLoading(true)
@@ -153,7 +154,6 @@ export default function Home() {
     e.preventDefault()
 
     if (!userId) {
-      alert("Session non trouvée. Reconnecte-toi.")
       router.push("/login")
       return
     }
@@ -174,6 +174,7 @@ export default function Home() {
       payment_link: paymentLink.trim() || null,
       status: "En attente paiement" as OrderStatus,
       user_id: userId,
+      delivery_status: "En attente livreur",
     }
 
     const { error } = await supabase.from("orders").insert([newOrder]).select()
@@ -234,7 +235,7 @@ export default function Home() {
   async function copyPaymentLink(link: string | null) {
     if (!link) return
     await navigator.clipboard.writeText(link)
-    alert("Lien copié")
+    alert("Lien paiement copié")
   }
 
   async function copyTrackingLink(token: string | null) {
@@ -248,60 +249,33 @@ export default function Home() {
     return phone.replace(/\D/g, "")
   }
 
+  function callClient(phone: string) {
+    const cleaned = phone.replace(/\D/g, "")
+    window.location.href = `tel:+${cleaned}`
+  }
+
   function openWhatsApp(order: Order) {
     const phone = formatPhoneForWhatsApp(order.phone)
     const suiviLink = `${window.location.origin}/suivi/${order.public_token}`
-
-    let statusMessage = ""
-
-    if (order.status === "En attente paiement") {
-      statusMessage = `Votre commande est prête.
-
-Pour éviter les annulations et garantir la livraison, merci de confirmer ou payer.`
-    }
-
-    if (order.status === "Payé") {
-      statusMessage = `Paiement confirmé.
-
-Votre commande est en cours de préparation pour livraison.`
-    }
-
-    if (order.status === "Livré") {
-      statusMessage = `Commande livrée avec succès.
-
-Merci pour votre confiance.`
-    }
-
-    if (order.status === "Refusé") {
-      statusMessage = `Commande refusée.
-
-Cette action est enregistrée dans le système Dhameni.`
-    }
-
-    if (order.status === "Retourné") {
-      statusMessage = `Commande retournée.
-
-Le retour est enregistré pour garantir la transparence.`
-    }
 
     const message = `Bonjour ${order.client_name},
 
 Votre commande est enregistrée via Dhameni.
 
-${statusMessage}
-
 Montant : ${order.amount} TND
-Statut : ${order.status}
+Statut paiement/commande : ${order.status}
+Statut livraison : ${order.delivery_status || "En attente livreur"}
 
 🔎 Suivre votre commande : ${suiviLink}
 
-✔️ Commande sécurisée
+🔒 Dhameni sécurise :
+✔️ Paiement / confirmation
 ✔️ Livraison suivie
 ✔️ Traçabilité en cas de refus ou retour
 
-${order.payment_link ? `Lien de paiement : ${order.payment_link}` : ""}
+${order.payment_link ? `👉 Lien de paiement : ${order.payment_link}` : ""}
 
-Merci.`
+Merci 🙏`
 
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
   }
@@ -340,6 +314,12 @@ Merci.`
       paid: orders.filter((o) => o.status === "Payé").length,
       delivered: orders.filter((o) => o.status === "Livré").length,
       returns: orders.filter((o) => o.return_requested).length,
+      deliveryActive: orders.filter(
+        (o) =>
+          o.delivery_status &&
+          o.delivery_status !== "En attente livreur" &&
+          o.delivery_status !== "Livré"
+      ).length,
     }
   }, [orders])
 
@@ -379,7 +359,7 @@ Merci.`
                   marginBottom: "12px",
                 }}
               >
-                V1 • Compte vendeur • Paiement • WhatsApp • Suivi • Retour
+                Solution pour vendeurs en ligne • Tunisie
               </div>
 
               <h1 style={{ fontSize: "34px", margin: "0 0 10px 0" }}>
@@ -450,9 +430,9 @@ Merci.`
           </div>
 
           <div style={{ ...styles.card, padding: "16px" }}>
-            <div style={{ fontSize: "13px", color: "#6b7280" }}>Livrées</div>
-            <div style={{ fontSize: "28px", fontWeight: 800, color: "#1d4ed8" }}>
-              {stats.delivered}
+            <div style={{ fontSize: "13px", color: "#6b7280" }}>Livraison active</div>
+            <div style={{ fontSize: "28px", fontWeight: 800, color: "#2563eb" }}>
+              {stats.deliveryActive}
             </div>
           </div>
 
@@ -474,6 +454,10 @@ Merci.`
         >
           <h2>Ajouter une commande</h2>
 
+          <p style={{ color: "#6b7280", fontSize: "14px" }}>
+            Créez une commande même sans site e-commerce. Envoyez ensuite le lien au client par WhatsApp.
+          </p>
+
           <form onSubmit={handleAddOrder} style={{ display: "grid", gap: "12px" }}>
             <input
               type="text"
@@ -485,7 +469,7 @@ Merci.`
 
             <input
               type="text"
-              placeholder="Téléphone"
+              placeholder="Téléphone avec indicatif pays"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               style={styles.input}
@@ -605,18 +589,28 @@ Merci.`
                   <div style={getStatusBadgeStyle(order.status)}>{order.status}</div>
 
                   <div style={{ marginTop: "14px", display: "grid", gap: "8px" }}>
-                    <div>
-                      <strong>Téléphone :</strong> {order.phone}
-                    </div>
-                    <div>
-                      <strong>Montant :</strong> {order.amount} TND
-                    </div>
-                    <div>
-                      <strong>Description :</strong> {order.description || "-"}
-                    </div>
-                    <div>
-                      <strong>Paiement :</strong>{" "}
-                      {order.payment_link ? "Lien disponible" : "-"}
+                    <div><strong>Téléphone :</strong> {order.phone}</div>
+                    <div><strong>Montant :</strong> {order.amount} TND</div>
+                    <div><strong>Description :</strong> {order.description || "-"}</div>
+                    <div><strong>Paiement :</strong> {order.payment_link ? "Lien disponible" : "-"}</div>
+
+                    <div
+                      style={{
+                        padding: "10px",
+                        borderRadius: "10px",
+                        backgroundColor: "#eff6ff",
+                        border: "1px solid #bfdbfe",
+                        color: "#1d4ed8",
+                      }}
+                    >
+                      <strong>Livraison :</strong>{" "}
+                      {order.delivery_status || "En attente livreur"}
+                      {order.driver_note && (
+                        <>
+                          <br />
+                          <strong>Note livreur :</strong> {order.driver_note}
+                        </>
+                      )}
                     </div>
 
                     {order.public_token && (
@@ -665,6 +659,18 @@ Merci.`
                   )}
 
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "16px" }}>
+                    <button
+                      onClick={() => callClient(order.phone)}
+                      style={{
+                        ...styles.smallButton,
+                        backgroundColor: "#f3f4f6",
+                        color: "#111827",
+                        border: "1px solid #d1d5db",
+                      }}
+                    >
+                      Appeler client
+                    </button>
+
                     {order.payment_link && (
                       <>
                         <a
@@ -731,54 +737,19 @@ Merci.`
                       marginTop: "16px",
                     }}
                   >
-                    <button
-                      onClick={() => updateOrderStatus(order.id, "Payé")}
-                      style={{
-                        ...styles.button,
-                        backgroundColor: "#dcfce7",
-                        color: "#166534",
-                      }}
-                    >
+                    <button onClick={() => updateOrderStatus(order.id, "Payé")} style={{ ...styles.button, backgroundColor: "#dcfce7", color: "#166534" }}>
                       Marquer Payé
                     </button>
-                    <button
-                      onClick={() => updateOrderStatus(order.id, "Livré")}
-                      style={{
-                        ...styles.button,
-                        backgroundColor: "#dbeafe",
-                        color: "#1d4ed8",
-                      }}
-                    >
+                    <button onClick={() => updateOrderStatus(order.id, "Livré")} style={{ ...styles.button, backgroundColor: "#dbeafe", color: "#1d4ed8" }}>
                       Marquer Livré
                     </button>
-                    <button
-                      onClick={() => updateOrderStatus(order.id, "Refusé")}
-                      style={{
-                        ...styles.button,
-                        backgroundColor: "#fee2e2",
-                        color: "#b91c1c",
-                      }}
-                    >
+                    <button onClick={() => updateOrderStatus(order.id, "Refusé")} style={{ ...styles.button, backgroundColor: "#fee2e2", color: "#b91c1c" }}>
                       Marquer Refusé
                     </button>
-                    <button
-                      onClick={() => updateOrderStatus(order.id, "Retourné")}
-                      style={{
-                        ...styles.button,
-                        backgroundColor: "#f3e8ff",
-                        color: "#7e22ce",
-                      }}
-                    >
+                    <button onClick={() => updateOrderStatus(order.id, "Retourné")} style={{ ...styles.button, backgroundColor: "#f3e8ff", color: "#7e22ce" }}>
                       Marquer Retourné
                     </button>
-                    <button
-                      onClick={() => deleteOrder(order.id)}
-                      style={{
-                        ...styles.button,
-                        backgroundColor: "#111827",
-                        color: "#ffffff",
-                      }}
-                    >
+                    <button onClick={() => deleteOrder(order.id)} style={{ ...styles.button, backgroundColor: "#111827", color: "#ffffff" }}>
                       Supprimer
                     </button>
                   </div>

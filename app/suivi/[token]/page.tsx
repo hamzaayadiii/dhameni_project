@@ -15,6 +15,8 @@ type Order = {
   public_token: string
   return_requested: boolean | null
   return_reason: string | null
+  delivery_status: string | null
+  driver_note: string | null
 }
 
 export default function SuiviCommandePage() {
@@ -130,8 +132,31 @@ export default function SuiviCommandePage() {
             <strong>Description :</strong> {order.description || "-"}
           </p>
           <p>
-            <strong>Statut :</strong> {order.status}
+            <strong>Statut commande :</strong> {order.status}
           </p>
+        </div>
+
+        <div
+          style={{
+            marginTop: "18px",
+            padding: "14px",
+            borderRadius: "14px",
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            color: "#1d4ed8",
+            fontSize: "14px",
+          }}
+        >
+          <strong>Livraison :</strong>{" "}
+          {order.delivery_status || "En attente livreur"}
+
+          {order.driver_note && (
+            <>
+              <br />
+              <br />
+              <strong>Info livreur :</strong> {order.driver_note}
+            </>
+          )}
         </div>
 
         {order.payment_link && (
@@ -166,6 +191,7 @@ export default function SuiviCommandePage() {
           }}
         >
           ✔️ Commande tracée <br />
+          ✔️ Livraison suivie <br />
           ✔️ Statut visible <br />
           ✔️ Sécurité Dhameni
         </div>
