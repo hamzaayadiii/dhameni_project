@@ -65,9 +65,14 @@ export default function LoginPage() {
     setLoading(true)
 
     const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password: password.trim(),
-    })
+        email: email.trim(),
+        password: password.trim(),
+        options: {
+            data: {
+            role,
+            },
+        },
+        })
 
     if (error) {
       setLoading(false)
