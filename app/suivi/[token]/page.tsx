@@ -102,8 +102,8 @@ export default function SuiviCommandePage() {
     .eq("public_token", token)
 
   if (error) {
-    alert("Erreur confirmation.")
-    console.log(error.message)
+    alert("Erreur confirmation : " + error.message)
+    console.log("CONFIRM ERROR:", error)
   } else {
     alert("Réception confirmée. Merci.")
     await fetchOrder()
