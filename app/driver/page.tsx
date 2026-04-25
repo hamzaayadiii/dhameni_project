@@ -15,6 +15,14 @@ type Order = {
   assigned_driver_id: string | null
 }
 
+const btn = {
+  padding: "12px",
+  borderRadius: "10px",
+  border: "none",
+  fontWeight: 700,
+  cursor: "pointer",
+}
+
 export default function DriverPage() {
   const router = useRouter()
 
@@ -28,38 +36,32 @@ export default function DriverPage() {
   }, [])
 
   async function initDriver() {
-  setLoading(true)
+    setLoading(true)
 
-  const { data } = await supabase.auth.getSession()
-  const user = data.session?.user
+    const { data } = await supabase.auth.getSession()
+    const user = data.session?.user
 
-  if (!user) {
-    router.push("/login")
-    return
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    if (profile?.role !== "driver") {
+      router.push("/")
+      return
+    }
+
+    setDriverId(user.id)
+    setDriverEmail(user.email || "")
+    await fetchOrders(user.id)
+    setLoading(false)
   }
-
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle()
-
-  if (error || !profile) {
-    await supabase.auth.signOut()
-    router.push("/login")
-    return
-  }
-
-  if (profile.role !== "driver") {
-    router.push("/")
-    return
-  }
-
-  setDriverId(user.id)
-  setDriverEmail(user.email || "")
-  await fetchOrders(user.id)
-  setLoading(false)
-}
 
   async function fetchOrders(currentDriverId = driverId) {
     const { data, error } = await supabase
@@ -89,15 +91,17 @@ export default function DriverPage() {
       .eq("id", orderId)
       .is("assigned_driver_id", null)
 
-    if (error) {
-      alert(error.message)
-    } else {
-      await fetchOrders(driverId)
-    }
+    if (error) alert(error.message)
+    else await fetchOrders(driverId)
   }
 
   async function updateDeliveryStatus(orderId: number, status: string) {
     if (!driverId) return
+
+    let orderStatus = null
+
+    if (status === "Livré") orderStatus = "Livré"
+    if (status === "Refusé par client") orderStatus = "Refusé"
 
     const note =
       status === "En route"
@@ -112,14 +116,20 @@ export default function DriverPage() {
         ? "Le client a refusé la commande."
         : status === "Report demandé"
         ? "Le client a demandé un autre créneau de livraison."
-        : null
+        : "Statut livraison mis à jour."
+
+    const updateData: any = {
+      delivery_status: status,
+      driver_note: note,
+    }
+
+    if (orderStatus) {
+      updateData.status = orderStatus
+    }
 
     const { error } = await supabase
       .from("orders")
-      .update({
-        delivery_status: status,
-        driver_note: note,
-      })
+      .update(updateData)
       .eq("id", orderId)
       .eq("assigned_driver_id", driverId)
 
@@ -128,6 +138,25 @@ export default function DriverPage() {
     } else {
       await fetchOrders(driverId)
     }
+  }
+
+  function callClient(phone: string) {
+    const cleaned = phone.replace(/\D/g, "")
+    window.location.href = `tel:+${cleaned}`
+  }
+
+  function whatsappClient(order: Order) {
+    const phone = order.phone.replace(/\D/g, "")
+
+    const message = `Bonjour ${order.client_name},
+
+Je suis le livreur de votre commande Dhameni.
+
+Statut actuel : ${order.delivery_status || "Pris en charge"}
+
+Merci de rester disponible pour la livraison.`
+
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
   }
 
   async function logout() {
@@ -159,21 +188,19 @@ export default function DriverPage() {
           }}
         >
           <h1 style={{ marginTop: 0 }}>Espace Livreur 🚚</h1>
-          <p style={{ color: "#d1d5db" }}>
-            Connecté : {driverEmail}
-          </p>
+
+          <p style={{ color: "#d1d5db" }}>Connecté : {driverEmail}</p>
+
           <p style={{ color: "#d1d5db", fontSize: 14 }}>
-            Prenez une commande, mettez à jour la livraison et gardez une trace claire.
+            Prenez une commande, contactez le client et mettez à jour la livraison.
           </p>
 
           <button
             onClick={logout}
             style={{
-              padding: 12,
-              borderRadius: 10,
-              border: "none",
-              fontWeight: 700,
-              cursor: "pointer",
+              ...btn,
+              background: "white",
+              color: "#111827",
             }}
           >
             Se déconnecter
@@ -217,15 +244,9 @@ export default function DriverPage() {
                   >
                     <div>
                       <h3 style={{ marginTop: 0 }}>{order.client_name}</h3>
-                      <p>
-                        <strong>Téléphone :</strong> {order.phone}
-                      </p>
-                      <p>
-                        <strong>Montant :</strong> {order.amount} TND
-                      </p>
-                      <p>
-                        <strong>Description :</strong> {order.description || "-"}
-                      </p>
+                      <p><strong>Téléphone :</strong> {order.phone}</p>
+                      <p><strong>Montant :</strong> {order.amount} TND</p>
+                      <p><strong>Description :</strong> {order.description || "-"}</p>
                     </div>
 
                     <div
@@ -249,6 +270,7 @@ export default function DriverPage() {
                       padding: 12,
                       borderRadius: 12,
                       background: "#f9fafb",
+                      border: "1px solid #e5e7eb",
                     }}
                   >
                     <p style={{ margin: "0 0 6px 0" }}>
@@ -267,15 +289,11 @@ export default function DriverPage() {
                     <button
                       onClick={() => takeOrder(order.id)}
                       style={{
+                        ...btn,
                         width: "100%",
                         marginTop: 14,
-                        padding: 12,
-                        borderRadius: 10,
-                        border: "none",
                         background: "#111827",
                         color: "white",
-                        fontWeight: 700,
-                        cursor: "pointer",
                       }}
                     >
                       Prendre en charge
@@ -283,38 +301,115 @@ export default function DriverPage() {
                   )}
 
                   {isMine && (
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-                        gap: 8,
-                        marginTop: 14,
-                      }}
-                    >
-                      <button onClick={() => updateDeliveryStatus(order.id, "En route")}>
-                        En route
-                      </button>
+                    <>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                          gap: 8,
+                          marginTop: 14,
+                        }}
+                      >
+                        <button
+                          onClick={() => callClient(order.phone)}
+                          style={{
+                            ...btn,
+                            background: "#f3f4f6",
+                            color: "#111827",
+                            border: "1px solid #d1d5db",
+                          }}
+                        >
+                          Appeler client
+                        </button>
 
-                      <button onClick={() => updateDeliveryStatus(order.id, "Arrivé")}>
-                        Arrivé
-                      </button>
+                        <button
+                          onClick={() => whatsappClient(order)}
+                          style={{
+                            ...btn,
+                            background: "#25D366",
+                            color: "white",
+                          }}
+                        >
+                          WhatsApp client
+                        </button>
+                      </div>
 
-                      <button onClick={() => updateDeliveryStatus(order.id, "Livré")}>
-                        Livré
-                      </button>
+                      <h4 style={{ marginBottom: 8 }}>Changer statut livraison</h4>
 
-                      <button onClick={() => updateDeliveryStatus(order.id, "Client absent")}>
-                        Client absent
-                      </button>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                          gap: 8,
+                        }}
+                      >
+                        <button
+                          onClick={() => updateDeliveryStatus(order.id, "En route")}
+                          style={{
+                            ...btn,
+                            background: "#dbeafe",
+                            color: "#1d4ed8",
+                          }}
+                        >
+                          En route
+                        </button>
 
-                      <button onClick={() => updateDeliveryStatus(order.id, "Refusé par client")}>
-                        Refusé
-                      </button>
+                        <button
+                          onClick={() => updateDeliveryStatus(order.id, "Arrivé")}
+                          style={{
+                            ...btn,
+                            background: "#e0e7ff",
+                            color: "#3730a3",
+                          }}
+                        >
+                          Arrivé
+                        </button>
 
-                      <button onClick={() => updateDeliveryStatus(order.id, "Report demandé")}>
-                        Report
-                      </button>
-                    </div>
+                        <button
+                          onClick={() => updateDeliveryStatus(order.id, "Livré")}
+                          style={{
+                            ...btn,
+                            background: "#dcfce7",
+                            color: "#166534",
+                          }}
+                        >
+                          Livré
+                        </button>
+
+                        <button
+                          onClick={() => updateDeliveryStatus(order.id, "Client absent")}
+                          style={{
+                            ...btn,
+                            background: "#fef3c7",
+                            color: "#92400e",
+                          }}
+                        >
+                          Client absent
+                        </button>
+
+                        <button
+                          onClick={() => updateDeliveryStatus(order.id, "Refusé par client")}
+                          style={{
+                            ...btn,
+                            background: "#fee2e2",
+                            color: "#b91c1c",
+                          }}
+                        >
+                          Refusé
+                        </button>
+
+                        <button
+                          onClick={() => updateDeliveryStatus(order.id, "Report demandé")}
+                          style={{
+                            ...btn,
+                            background: "#f3e8ff",
+                            color: "#7e22ce",
+                          }}
+                        >
+                          Report
+                        </button>
+                      </div>
+                    </>
                   )}
                 </article>
               )
