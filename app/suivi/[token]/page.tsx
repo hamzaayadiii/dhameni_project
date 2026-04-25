@@ -17,6 +17,7 @@ type Order = {
   return_reason: string | null
   delivery_status: string | null
   driver_note: string | null
+  driver_phone: string | null
 }
 
 export default function SuiviCommandePage() {
@@ -25,7 +26,6 @@ export default function SuiviCommandePage() {
 
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
-
   const [reason, setReason] = useState("")
   const [sending, setSending] = useState(false)
 
@@ -158,6 +158,56 @@ export default function SuiviCommandePage() {
             </>
           )}
         </div>
+
+        {order.driver_phone && (
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "14px",
+              borderRadius: "14px",
+              background: "#f9fafb",
+              border: "1px solid #e5e7eb",
+            }}
+          >
+            <strong>Livreur :</strong> {order.driver_phone}
+
+            <div style={{ display: "grid", gap: "10px", marginTop: "12px" }}>
+              <a
+                href={`tel:${order.driver_phone}`}
+                style={{
+                  display: "block",
+                  padding: "12px",
+                  borderRadius: "10px",
+                  background: "#111827",
+                  color: "white",
+                  textAlign: "center",
+                  textDecoration: "none",
+                  fontWeight: 700,
+                }}
+              >
+                Appeler le livreur
+              </a>
+
+              <a
+                href={`https://wa.me/${order.driver_phone.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "block",
+                  padding: "12px",
+                  borderRadius: "10px",
+                  background: "#25D366",
+                  color: "white",
+                  textAlign: "center",
+                  textDecoration: "none",
+                  fontWeight: 700,
+                }}
+              >
+                WhatsApp livreur
+              </a>
+            </div>
+          </div>
+        )}
 
         {order.payment_link && (
           <a

@@ -79,21 +79,28 @@ export default function DriverPage() {
   }
 
   async function takeOrder(orderId: number) {
-    if (!driverId) return
+  if (!driverId) return
 
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        assigned_driver_id: driverId,
-        delivery_status: "Pris en charge",
-        driver_note: "Commande prise en charge par le livreur.",
-      })
-      .eq("id", orderId)
-      .is("assigned_driver_id", null)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("phone")
+    .eq("id", driverId)
+    .maybeSingle()
 
-    if (error) alert(error.message)
-    else await fetchOrders(driverId)
-  }
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      assigned_driver_id: driverId,
+      driver_phone: profile?.phone || null,
+      delivery_status: "Pris en charge",
+      driver_note: "Commande prise en charge par le livreur.",
+    })
+    .eq("id", orderId)
+    .is("assigned_driver_id", null)
+
+  if (error) alert(error.message)
+  else await fetchOrders(driverId)
+}
 
   async function updateDeliveryStatus(orderId: number, status: string) {
     if (!driverId) return
