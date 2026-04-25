@@ -20,6 +20,8 @@ type Order = {
   driver_phone: string | null
   proof_image_url: string | null
   proof_uploaded_at: string | null
+  client_confirmed: boolean | null
+  client_confirmed_at: string | null
 }
 
 export default function SuiviCommandePage() {
@@ -87,6 +89,27 @@ export default function SuiviCommandePage() {
     return <main style={{ padding: 20 }}>Chargement...</main>
   }
 
+  async function handleClientConfirm() {
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      client_confirmed: true,
+      client_confirmed_at: new Date().toISOString(),
+      status: "Livré",
+      delivery_status: "Livré",
+      driver_note: "Le client a confirmé la réception.",
+    })
+    .eq("public_token", token)
+
+  if (error) {
+    alert("Erreur confirmation.")
+    console.log(error.message)
+  } else {
+    alert("Réception confirmée. Merci.")
+    await fetchOrder()
+  }
+}
+
   if (!order) {
     return <main style={{ padding: 20 }}>Commande introuvable.</main>
   }
@@ -150,6 +173,48 @@ export default function SuiviCommandePage() {
           }}
         >
           <strong>Livraison :</strong>{" "}
+          <div
+  style={{
+    marginTop: "18px",
+    padding: "14px",
+    borderRadius: "14px",
+    background: "#ecfdf5",
+    border: "1px solid #a7f3d0",
+    color: "#065f46",
+  }}
+>
+  <h3 style={{ marginTop: 0 }}>Confirmation réception</h3>
+
+  {order.client_confirmed ? (
+    <p style={{ marginBottom: 0 }}>
+      ✅ Réception confirmée par le client
+      {order.client_confirmed_at && (
+        <>
+          <br />
+          <span style={{ fontSize: "13px" }}>
+            Le : {new Date(order.client_confirmed_at).toLocaleString()}
+          </span>
+        </>
+      )}
+    </p>
+  ) : (
+    <button
+      onClick={handleClientConfirm}
+      style={{
+        width: "100%",
+        padding: "12px",
+        borderRadius: "10px",
+        backgroundColor: "#065f46",
+        color: "white",
+        fontWeight: 700,
+        border: "none",
+        cursor: "pointer",
+      }}
+    >
+      Je confirme la réception
+    </button>
+  )}
+</div>
           {order.delivery_status || "En attente livreur"}
 
           {order.proof_image_url && (

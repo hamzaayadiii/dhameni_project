@@ -28,6 +28,8 @@ type Order = {
   delivery_status: string | null
   driver_note: string | null
   assigned_driver_id: string | null
+  client_confirmed: boolean | null
+  client_confirmed_at: string | null
 }
 
 const styles = {
@@ -629,6 +631,27 @@ Merci 🙏`
                       }}
                     >
                       <strong>Livraison :</strong>{" "}
+                      {order.client_confirmed && (
+  <div
+    style={{
+      padding: "10px",
+      borderRadius: "10px",
+      backgroundColor: "#ecfdf5",
+      border: "1px solid #a7f3d0",
+      color: "#065f46",
+    }}
+  >
+        <strong>Confirmation client :</strong> Réception confirmée
+        {order.client_confirmed_at && (
+          <>
+            <br />
+            <span style={{ fontSize: "13px" }}>
+              Le : {new Date(order.client_confirmed_at).toLocaleString()}
+            </span>
+          </>
+        )}
+      </div>
+)}
                       {order.delivery_status || "En attente livreur"}
                       {order.driver_note && (
                         <>
