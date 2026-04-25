@@ -178,33 +178,28 @@ export default function SuiviCommandePage() {
     marginTop: "18px",
     padding: "14px",
     borderRadius: "14px",
-    background: "#ecfdf5",
-    border: "1px solid #a7f3d0",
-    color: "#065f46",
+    background: "#ecfeff",
+    border: "1px solid #a5f3fc",
   }}
 >
-  <h3 style={{ marginTop: 0 }}>Confirmation réception</h3>
+  <h3 style={{ marginTop: 0 }}>Confirmation de réception</h3>
 
   {order.client_confirmed ? (
-    <p style={{ marginBottom: 0 }}>
-      ✅ Réception confirmée par le client
+    <div style={{ color: "#065f46", fontSize: "14px" }}>
+      ✔️ Vous avez confirmé la réception de la commande.
+      <br />
       {order.client_confirmed_at && (
-        <>
-          <br />
-          <span style={{ fontSize: "13px" }}>
-            Le : {new Date(order.client_confirmed_at).toLocaleString()}
-          </span>
-        </>
+        <>Le : {new Date(order.client_confirmed_at).toLocaleString()}</>
       )}
-    </p>
-  ) : (
+    </div>
+  ) : order.delivery_status === "Arrivé" || order.delivery_status === "Livré" ? (
     <button
       onClick={handleClientConfirm}
       style={{
         width: "100%",
         padding: "12px",
         borderRadius: "10px",
-        backgroundColor: "#065f46",
+        backgroundColor: "#06b6d4",
         color: "white",
         fontWeight: 700,
         border: "none",
@@ -213,6 +208,10 @@ export default function SuiviCommandePage() {
     >
       Je confirme la réception
     </button>
+  ) : (
+    <p style={{ margin: 0, fontSize: "14px", color: "#0c4a6e" }}>
+      La confirmation sera disponible lorsque le livreur sera arrivé.
+    </p>
   )}
 </div>
           {order.delivery_status || "En attente livreur"}
