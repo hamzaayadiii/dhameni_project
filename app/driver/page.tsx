@@ -95,11 +95,12 @@ export default function DriverPage() {
     .getPublicUrl(fileName)
 
   await supabase
-    .from("orders")
-    .update({
-      proof_image_url: publicUrl.publicUrl,
-    })
-    .eq("id", orderId)
+  .from("orders")
+  .update({
+    proof_image_url: publicUrl.publicUrl,
+    proof_uploaded_at: new Date().toISOString(),
+  })
+  .eq("id", orderId)
 
   fetchOrders(driverId)
 }

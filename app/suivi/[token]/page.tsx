@@ -19,6 +19,7 @@ type Order = {
   driver_note: string | null
   driver_phone: string | null
   proof_image_url: string | null
+  proof_uploaded_at: string | null
 }
 
 export default function SuiviCommandePage() {
@@ -226,6 +227,12 @@ export default function SuiviCommandePage() {
             </div>
           </div>
         )}
+
+        {order.proof_uploaded_at && (
+            <p style={{ fontSize: "13px", color: "#6b7280" }}>
+                Preuve ajoutée le : {new Date(order.proof_uploaded_at).toLocaleString()}
+            </p>
+            )}
 
         {order.payment_link && (
           <a
