@@ -78,6 +78,32 @@ export default function DriverPage() {
     }
   }
 
+  async function uploadProof(orderId: number, file: File) {
+  const fileName = `${orderId}-${Date.now()}.jpg`
+
+  const { data, error } = await supabase.storage
+    .from("proofs")
+    .upload(fileName, file)
+
+  if (error) {
+    alert("Erreur upload")
+    return
+  }
+
+  const { data: publicUrl } = supabase.storage
+    .from("proofs")
+    .getPublicUrl(fileName)
+
+  await supabase
+    .from("orders")
+    .update({
+      proof_image_url: publicUrl.publicUrl,
+    })
+    .eq("id", orderId)
+
+  fetchOrders(driverId)
+}
+
   async function takeOrder(orderId: number) {
   if (!driverId) return
 
@@ -324,6 +350,15 @@ Merci de rester disponible pour la livraison.`
                       Prendre en charge
                     </button>
                   )}
+
+                <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) uploadProof(order.id, file)
+                    }}
+                    />
 
                   {isMine && (
                     <>

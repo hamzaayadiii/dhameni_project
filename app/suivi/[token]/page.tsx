@@ -18,6 +18,7 @@ type Order = {
   delivery_status: string | null
   driver_note: string | null
   driver_phone: string | null
+  proof_image_url: string | null
 }
 
 export default function SuiviCommandePage() {
@@ -150,7 +151,24 @@ export default function SuiviCommandePage() {
           <strong>Livraison :</strong>{" "}
           {order.delivery_status || "En attente livreur"}
 
-          {order.driver_note && (
+          {order.proof_image_url && (
+                    <div style={{ marginTop: 18 }}>
+                        <strong>Preuve de livraison :</strong>
+
+                        <img
+                        src={order.proof_image_url}
+                        alt="preuve"
+                        style={{
+                            width: "100%",
+                            marginTop: 10,
+                            borderRadius: 12,
+                            border: "1px solid #e5e7eb",
+                        }}
+                        />
+                    </div>
+                    )}
+
+                            {order.driver_note && (
             <>
               <br />
               <br />
